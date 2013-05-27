@@ -6,6 +6,8 @@ finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readline
 periods = { 'tick' : 1, 'min' : 2, '5min' : 3, '10min' : 4, '15min' : 5,
             '30min' : 6, 'hour' : 7, 'daily' : 8, 'week' : 9, 'month' : 10 }
 
+__all__ = ['periods', 'get_quotes_finam']
+			
 def __get_finam_code__(symbol):
     s_id = finam_symbols[0]
     s_code = finam_symbols[2]
