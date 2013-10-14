@@ -1,4 +1,5 @@
 from pandas import DataFrame, read_csv
+from urllib import urlencode
 from urllib2 import urlopen, Request
 from datetime import datetime, timedelta, date
 
@@ -21,23 +22,22 @@ def __get_finam_code__(symbol):
     return 0
 
 def __get_url__(symbol, period, start_date, end_date):
+    finam_HOST = "195.128.78.52"
+    #finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=1&MSOR=0&sep=1&sep2=1&at=1&"
+    finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1&"
+               #'/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1'
     symb = __get_finam_code__(symbol)
-    datf = 5
+    params = urlencode({"p": period, "em": symb,
+                        "df": start_date.day, "mf": start_date.month-1,
+                        "yf": start_date.year,
+                        "dt": end_date.day, "mt": end_date.month-1,
+                        "yt": end_date.year, "cn": symbol})
+
+    stock_URL = finam_URL + params
     if period == periods['tick']:
-        datf = 11
-    url = 'http://195.128.78.52/table.csv?market=1&f=table&e=.csv&dtf=1&tmf=3'+\
-          '&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1'+\
-          '&datf='+str(datf)+\
-          '&p=' +str(period)+\
-          '&em='+str(symb)+\
-          '&df='+str(start_date.day)+\
-          '&mf='+str(start_date.month-1)+\
-          '&yf='+str(start_date.year)+\
-          '&dt='+str(end_date.day)+\
-          '&mt='+str(end_date.month-1)+\
-          '&yt='+str(end_date.year)+\
-          '&cn='+symbol
-    return url
+        return "http://" + finam_HOST + stock_URL + '&datf=11'
+    else:
+        return "http://" + finam_HOST + stock_URL + '&datf=5'
 
 def __period__(s):
     return periods[s]
@@ -105,8 +105,8 @@ def __get_tick_quotes_finam_all__(symbol, start_date, end_date):
     return pdata
 
 if __name__ == "__main__":
-    code = 'SiM3'
-    per = 'hour'
+    code = 'FEES'
+    per = 'daily'
     print 'download %s data for %s' %(per, code)
     quote = get_quotes_finam(code, start_date='20130513', period=per)
     print quote.head()
