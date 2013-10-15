@@ -16,11 +16,13 @@ def __get_finam_code__(symbol):
     names = s_code[s_code.find('[\'') + 1:s_code.find('\']')].split('\',\'')
     ids = s_id[s_id.find('[') + 1:s_id.find(']')].split(',')
     if symbol in names:
-        symb_id = names.index(symbol)
-        return int(ids[symb_id])
+        max_id = 0
+        for i, name in enumerate(names):
+            if name == symbol and i > max_id:
+                max_id = i
+        return int(ids[max_id])
     else:
-        print "%s not found\r\n" % symbol
-    return 0
+        raise Exception("%s not found\r\n" % symbol)
 
 
 def __get_url__(symbol, period, start_date, end_date):
