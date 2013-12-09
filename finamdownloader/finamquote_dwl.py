@@ -27,6 +27,8 @@ def __get_finam_code__(symbol):
 
 def __get_url__(symbol, period, start_date, end_date):
     finam_HOST = "195.128.78.52"
+    #'http://195.128.78.52/table.csv?market=1&em=3&code=SBER&df=9&mf=11&yf=2013&dt=9&mt=11&yt=2013&p=1&f=table&e=.csv&cn=SBER&dtf=1&tmf=1&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&datf=9&at=1'
+    #'http://195.128.78.52/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1&em=20509&p=1&mf=10&cn=FEES&mt=10&df=22&dt=22&yt=2013&yf=2013&datf=11'
     #finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=1&MSOR=0&sep=1&sep2=1&at=1&"
     finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1&"
     #'/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1'
@@ -39,7 +41,7 @@ def __get_url__(symbol, period, start_date, end_date):
 
     stock_URL = finam_URL + params
     if period == periods['tick']:
-        return "http://" + finam_HOST + stock_URL + '&datf=11'
+        return "http://" + finam_HOST + stock_URL + '&code='+ symbol + '&datf=11'
     else:
         return "http://" + finam_HOST + stock_URL + '&datf=5'
 
@@ -92,12 +94,15 @@ def __get_tick_quotes_finam__(symbol, start_date, end_date):
         req = Request(url)
         req.add_header('Referer', 'http://www.finam.ru/analysis/profile0000300007/default.asp')
         r = urlopen(req)
+        try:
+            tmp_data = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
+            if data.empty:
+                data = tmp_data
+            else:
+                data = data.append(tmp_data)
+        except Exception:
+            print 'error on data downloading {} {}'.format(symbol, start_date + day)
 
-        tmp_data = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
-        if data.empty:
-            data = tmp_data
-        else:
-            data = data.append(tmp_data)
     data.columns = [symbol + '.' + i for i in ['Last', 'Vol', 'Id']]
     return data
 
@@ -116,7 +121,8 @@ def __get_tick_quotes_finam_all__(symbol, start_date, end_date):
 
 if __name__ == "__main__":
     code = 'FEES'
-    per = 'daily'
+    per = 'tick'
     print 'download %s data for %s' % (per, code)
-    quote = get_quotes_finam(code, start_date='20130513', period=per)
+    quote = get_quotes_finam(code, start_date='20131122', end_date='20131125', period=per)
+    print quote
     print quote.head()
