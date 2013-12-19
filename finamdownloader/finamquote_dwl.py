@@ -1,6 +1,6 @@
 from pandas import DataFrame, read_csv
-from urllib import urlencode
-from urllib2 import urlopen, Request
+from urllib.parse import urlencode
+from urllib.request import urlopen, Request
 from datetime import datetime, timedelta, date
 
 finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
@@ -11,10 +11,12 @@ __all__ = ['periods', 'get_quotes_finam']
 
 
 def __get_finam_code__(symbol):
-    s_id = finam_symbols[0]
-    s_code = finam_symbols[2]
-    names = s_code[s_code.find('[\'') + 1:s_code.find('\']')].split('\',\'')
-    ids = s_id[s_id.find('[') + 1:s_id.find(']')].split(',')
+    s_id = str(finam_symbols[0])
+    s_code = str(finam_symbols[2])
+    star = str(s_code).find("[\'") + 2
+    en = s_code.find("\']")
+    names = s_code[star : en].split('\',\'')
+    ids = s_id[s_id.find('[') + 1 : s_id.find(']')].split(',')
     if symbol in names:
         max_id = 0
         for i, name in enumerate(names):
@@ -101,7 +103,7 @@ def __get_tick_quotes_finam__(symbol, start_date, end_date):
             else:
                 data = data.append(tmp_data)
         except Exception:
-            print 'error on data downloading {} {}'.format(symbol, start_date + day)
+            print('error on data downloading {} {}'.format(symbol, start_date + day))
 
     data.columns = [symbol + '.' + i for i in ['Last', 'Vol', 'Id']]
     return data
@@ -122,7 +124,7 @@ def __get_tick_quotes_finam_all__(symbol, start_date, end_date):
 if __name__ == "__main__":
     code = 'FEES'
     per = 'tick'
-    print 'download %s data for %s' % (per, code)
+    print('download %s data for %s' % (per, code))
     quote = get_quotes_finam(code, start_date='20131122', end_date='20131125', period=per)
-    print quote
-    print quote.head()
+    print(quote)
+    print(quote.head())

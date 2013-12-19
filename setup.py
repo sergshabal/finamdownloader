@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf8
 
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 
 import sys
 import os
