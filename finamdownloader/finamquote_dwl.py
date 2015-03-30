@@ -1,6 +1,6 @@
 from pandas import DataFrame, read_csv
-from urllib import urlencode
-from urllib2 import urlopen, Request
+from urllib.parse import urlencode
+from urllib.request import urlopen, Request
 from datetime import datetime, timedelta, date
 
 finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
@@ -38,6 +38,8 @@ def __get_finam_code__(symbol, verbose=False):
 
 def __get_url__(symbol, period, start_date, end_date, verbose=False):
     finam_HOST = "195.128.78.52"
+    #'http://195.128.78.52/table.csv?market=1&em=3&code=SBER&df=9&mf=11&yf=2013&dt=9&mt=11&yt=2013&p=1&f=table&e=.csv&cn=SBER&dtf=1&tmf=1&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&datf=9&at=1'
+    #'http://195.128.78.52/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1&em=20509&p=1&mf=10&cn=FEES&mt=10&df=22&dt=22&yt=2013&yf=2013&datf=11'
     #finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=1&MSOR=0&sep=1&sep2=1&at=1&"
     finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1&"
     #'/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1'
@@ -106,12 +108,15 @@ def __get_tick_quotes_finam__(symbol, start_date, end_date, verbose=False):
         req = Request(url)
         req.add_header('Referer', 'http://www.finam.ru/analysis/profile0000300007/default.asp')
         r = urlopen(req)
+        try:
+            tmp_data = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
+            if data.empty:
+                data = tmp_data
+            else:
+                data = data.append(tmp_data)
+        except Exception:
+            print('error on data downloading {} {}'.format(symbol, start_date + day))
 
-        tmp_data = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
-        if data.empty:
-            data = tmp_data
-        else:
-            data = data.append(tmp_data)
     data.columns = [symbol + '.' + i for i in ['Last', 'Vol', 'Id']]
     return data
 
@@ -169,3 +174,4 @@ if __name__ == "__main__":
 
     quote = get_quotes_finam(code, start_date='20150101', period=per, verbose=True)
     print quote.head()
+
