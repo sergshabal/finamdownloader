@@ -8,7 +8,8 @@ from setuptools import setup
 
 extra_args = {}
 if sys.version_info[0] >= 3:
-    extra_args['use_2to3'] = True
+    raise Exceprion("This lib is only for python 2.7")
+	#extra_args['use_2to3'] = True
 
 
 setup(name='finamdownloader',

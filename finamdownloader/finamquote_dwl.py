@@ -1,6 +1,6 @@
 from pandas import DataFrame, read_csv
-from urllib.parse import urlencode
-from urllib.request import urlopen, Request
+from urllib import urlencode,urlopen
+from urllib2 import Request
 from datetime import datetime, timedelta, date
 
 finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
