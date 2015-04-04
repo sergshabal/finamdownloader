@@ -1,6 +1,7 @@
 from pandas import DataFrame, read_csv
-from urllib import urlencode,urlopen
+from urllib import urlencode, urlopen
 from urllib2 import Request
+from urllib2 import urlopen as urlopen2
 from datetime import datetime, timedelta, date
 
 finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
@@ -107,7 +108,7 @@ def __get_tick_quotes_finam__(symbol, start_date, end_date, verbose=False):
         url = __get_url__(symbol, periods['tick'], start_date + day, start_date + day, verbose)
         req = Request(url)
         req.add_header('Referer', 'http://www.finam.ru/analysis/profile0000300007/default.asp')
-        r = urlopen(req)
+        r = urlopen2(req)
         try:
             tmp_data = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
             if data.empty:
@@ -174,4 +175,5 @@ if __name__ == "__main__":
 
     quote = get_quotes_finam(code, start_date='20150101', period=per, verbose=True)
     print quote.head()
-
+    quote = get_quotes_finam(code, start_date='20150106', end_date='20150106', period='tick', verbose=True)
+    print quote.head()

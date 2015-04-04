@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf8
 
-VERSION = '0.1.2'
+VERSION = '0.1.3'
 
 import sys
 from setuptools import setup
