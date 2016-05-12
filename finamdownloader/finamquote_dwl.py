@@ -78,13 +78,16 @@ def __get_daily_quotes_finam__(symbol, start_date='20070101',
 
 
 def get_quotes_finam(symbol, start_date='20070101',
-                     end_date=date.today().strftime("%Y%m%d"),
+                     end_date=None,
                      period='daily', verbose=False):
     """
     Return downloaded prices for symbol from start date to end date with default period daily
     Date format = YYYYMMDD
     Period can be in ['tick','1min','5min','10min','15min','30min','hour','daily','week','month']
     """
+    if end_date is None:
+        end_date = date.today().strftime("%Y%m%d")
+
     if __period__(period) == periods['tick']:
         return __get_tick_quotes_finam__(symbol, start_date, end_date, verbose)
     elif __period__(period) >= periods['daily']:
