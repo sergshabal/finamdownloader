@@ -29,7 +29,7 @@ def __get_finam_code__(symbol, verbose=False):
     data['code'] = codes
     data['market'] = markets
     idx = (data.market != '-1') & (data.market != '3')
-    data = data[idx].sort('market')
+    data = data[idx].sort_values(by=['market'])
     res = data[data.code == symbol].iloc[0].ids
     if res is None or res == '':
         raise Exception("%s not found\r\n" % symbol)
@@ -73,7 +73,11 @@ def __get_daily_quotes_finam__(symbol, start_date='20070101',
     start_date = datetime.strptime(start_date, "%Y%m%d").date()
     end_date = datetime.strptime(end_date, "%Y%m%d").date()
     url = __get_url__(symbol, __period__(period), start_date, end_date, verbose)
-    pdata = read_csv(url, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
+    try:
+        pdata = read_csv(url, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
+    except:
+        e = "ERROR on {}".format(url)
+        raise Exception(e)
     pdata.columns = [symbol + '.' + i for i in ['Open', 'High', 'Low', 'Close', 'Vol']]
     return pdata
 
@@ -97,7 +101,12 @@ def get_quotes_finam(symbol, start_date='20070101',
         start_date = datetime.strptime(start_date, "%Y%m%d").date()
         end_date = datetime.strptime(end_date, "%Y%m%d").date()
         url = __get_url__(symbol, __period__(period), start_date, end_date, verbose)
-        pdata = read_csv(url, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
+        try:
+            pdata = read_csv(url, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
+        except:
+            e = "ERROR on {}".format(url)
+            raise Exception(e)
+        
         pdata.columns = [symbol + '.' + i for i in ['Open', 'High', 'Low', 'Close', 'Vol']]
         return pdata
 
