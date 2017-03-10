@@ -1,18 +1,25 @@
+# -*- coding: utf-8 -*-
+
 from pandas import DataFrame, read_csv
 from urllib import urlencode, urlopen
 from urllib2 import Request
 from urllib2 import urlopen as urlopen2
 from datetime import datetime, timedelta, date
+import StringIO
+from time import sleep
 
-finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
 
-periods = {'tick': 1, '1min': 2, '5min': 3, '10min': 4, '15min': 5,
-           '30min': 6, 'hour': 7, 'daily': 8, 'week': 9, 'month': 10}
+__finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
 
-__col_names = {'tick': ['Last', 'Vol', 'Id'],
-               'bar' : ['Open', 'High', 'Low', 'Close', 'Vol'],
-              }
+periods = {
+    'tick': 1, '1min': 2, '5min': 3, '10min': 4, '15min': 5,
+    '30min': 6, 'hour': 7, 'daily': 8, 'week': 9, 'month': 10
+}
 
+__col_names = {
+    'tick': ['Last', 'Vol', 'Id'],
+    'bar': ['Open', 'High', 'Low', 'Close', 'Vol'],
+}
 
 __all__ = ['periods', 'get_quotes_finam']
 
@@ -24,23 +31,24 @@ def __print__(s, verbose=False):
 
 
 def __get_finam_code__(symbol, verbose=False):
-    s_id = finam_symbols[0]
-    s_code = finam_symbols[2]
-    s_market = finam_symbols[3]
+    s_id = __finam_symbols[0]
+    s_code = __finam_symbols[2]
+    s_market = __finam_symbols[3]
 
     ids = s_id[s_id.find('[') + 1:s_id.find(']')].split(',')
     codes = s_code[s_code.find('[\'') + 1:s_code.find('\']')].split('\',\'')
     markets = s_market[s_market.find('[') + 1:s_market.find(']')].split(',')
-    data = DataFrame(data=ids, columns=['ids'])
-    data['code'] = codes
-    data['market'] = markets
-    idx = (data.market != '-1') & (data.market != '3')
-    data = data[idx].sort_values(by=['market'])
-    res = data[data.code == symbol].iloc[0].ids
-    if res is None or res == '':
-        raise Exception("%s not found\r\n" % symbol)
+    res = []
+    for (i, c, m) in zip(ids, codes, markets):
+        if c == symbol:
+            res.append((i, c, m))
+
+    res = sorted(res, key=lambda (_i, _c, _m): int(_m))
+    if not res:
+        raise Exception("%s not found." % symbol)
     __print__("{0}, {1}".format(res, symbol), verbose)
-    return res
+    _id, _, _ = res[0]
+    return _id
 
 
 def __get_url__(symbol, period, start_date, end_date, verbose=False):
@@ -171,7 +179,7 @@ def __get_tick_quotes_finam_all__(symbol, start_date, end_date, verbose=False):
 if __name__ == "__main__":
     code = 'SBER'
     per = 'hour'
-    print 'download %s data for %s' % (per, code)
+    print('download %s data for %s' % (per, code))
     s = """http://195.128.78.52/SBER_140101_150101.csv?market=1
 &em=3&code=SBER&df=1&mf=0&yf=2014&from=01.01.2014&dt=1&mt=0
 &yt=2015&to=01.01.2015&p=7&f=table&e=.csv&cn=SBER&dtf=1&tmf=1
@@ -194,8 +202,8 @@ if __name__ == "__main__":
     aa = ss1.sort()
     print("")
 
-    for i,j in zip(ss, ss1):
-        ii,jj = i,j
+    for i, j in zip(ss, ss1):
+        ii, jj = i, j
         if ii.find('http') != -1:
             x = ii.split('?')
             ii = x[-1]
@@ -203,11 +211,11 @@ if __name__ == "__main__":
             x = jj.split('?')
             jj = x[-1]
 
-        if True:#ii != jj:
-            print(ii, "\t", jj)
-
+        if True:  # ii != jj:
+            print(ii, '\t', jj)
 
     quote = get_quotes_finam(code, start_date='20150101', period=per, verbose=True)
-    print quote.head()
-    quote = get_quotes_finam(code, start_date='20150106', end_date='20150106', period='tick', verbose=True)
-    print quote.head()
+    print(quote.head())
+    quote = get_quotes_finam(code, start_date='20150205', end_date='20150208', period='tick', verbose=True)
+    print(quote.head())
+    print(quote.tail())
