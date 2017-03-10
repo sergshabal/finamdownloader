@@ -21,7 +21,7 @@ __col_names = {
     'bar': ['Open', 'High', 'Low', 'Close', 'Vol'],
 }
 
-__all__ = ['periods', 'get_quotes_finam']
+__all__ = ['periods', 'get_quotes_finam', 'get_quotes_as_buf']
 
 
 def __print__(s, verbose=False):
@@ -60,124 +60,117 @@ def __get_url__(symbol, period, start_date, end_date, verbose=False):
                         "yf": start_date.year,
                         "dt": end_date.day, "mt": end_date.month - 1,
                         "yt": end_date.year, "cn": symbol,
-                        "code": symbol,})
+                        "code": symbol, })
 
     stock_URL = finam_URL + params
-    s = "http://" + finam_HOST + stock_URL
-    s = s + ('&datf=11' if period == periods['tick'] else '&datf=5')
-    __print__(s, verbose)
-    return s
+    result_url = "http://" + finam_HOST + stock_URL
+    result_url += ('&datf=11' if period == periods['tick'] else '&datf=5')
+    __print__(result_url, verbose)
+    return result_url
 
 
 def __period__(s):
     return periods[s]
 
 
-def __tryopenurl(url):
+def __get_buf_data(url):
     resp = urlopen(url)
     rawstr = resp.read()
-    err_cnt = 0
+    erros_cnt = 0
     while not __has_data(rawstr):
         sleep(5)
-        err_cnt += 1
-        if err_cnt > 6:
+        erros_cnt += 1
+        if erros_cnt > 6:
             raise Exception(unicode(rawstr, 'cp1251'))
-
     return StringIO.StringIO(rawstr)
 
 
 def __has_data(rawstr):
-    err = u'Система уже обрабатывает Ваш запрос.'
-    return not unicode(rawstr, 'cp1251').startswith(err)
+    error_data = u'Система уже обрабатывает Ваш запрос.'
+    if unicode(rawstr, 'cp1251').startswith(error_data):
+        return False
+    elif False:  # here must be other server exception
+        return False
+    else:
+        return True
 
 
-def __get_daily_quotes_finam__(symbol, start_date='20070101',
-                               end_date=date.today().strftime('%Y%m%d'),
-                               period='daily', verbose=False):
+def __pandasDF_from_buf(buf):
+    head = buf.readline()
+    col_names = map(str.capitalize, head.strip().replace('<', '').replace('>', '').split(';'))
+    df = read_csv(buf, index_col=0, parse_dates={'index': [0, 1]}, sep=';', names=col_names)
+    buf.close()
+    return df
+
+
+def __update_tick_id(buf):
+    def update_id(s):
+        if len(s) == 0:
+            return s
+        separator = ';'
+        arr = s.split(separator)
+        try:
+            arr[-1] = str(4294967296 + int(arr[-1]))
+        except:
+            return s
+        return separator.join(arr)
+
+    return "\r\n".join(map(update_id, buf.read().split('\r\n')))
+
+
+def __get_tick_quotes_finam__(symbol, start_date, end_date, verbose=False):
+    delta = end_date - start_date
+    data = StringIO.StringIO()
+
+    for i in range(delta.days + 1):
+        day = timedelta(i)
+        url = __get_url__(symbol, periods['tick'], start_date + day, start_date + day, verbose)
+        tmp_data = __get_buf_data(url)
+        if data.len > 0:  # skip head
+            _ = tmp_data.readline()
+
+        data.write(__update_tick_id(tmp_data))
+        tmp_data.close()
+
+    return StringIO.StringIO(data.getvalue())
+
+
+def get_quotes_as_buf(symbol, start_date='20070101', end_date=None,
+                      period='daily', verbose=False):
     """
-    Return downloaded daily or more prices about symbol from start date to end date
-    """
-    start_date = datetime.strptime(start_date, "%Y%m%d").date()
-    end_date = datetime.strptime(end_date, "%Y%m%d").date()
-    url = __get_url__(symbol, __period__(period), start_date, end_date, verbose)
-    try:
-        pdata = read_csv(url, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
-    except:
-        raise Exception("ERROR on {}".format(url))
-    
-    pdata.columns = [symbol + '.' + i for i in __col_names['bar']]
-    return pdata
-
-
-def get_quotes_finam(symbol, start_date='20070101',
-                     end_date=None,
-                     period='daily', verbose=False):
-    """
-    Return downloaded prices for symbol from start date to end date with default period daily
+    Return prices for symbol from start date to end date with default period daily.
+    Return type is StringIO.
     Date format = YYYYMMDD
     Period can be in ['tick','1min','5min','10min','15min','30min','hour','daily','week','month']
     """
     if end_date is None:
         end_date = date.today().strftime("%Y%m%d")
 
+    start_date = datetime.strptime(start_date, "%Y%m%d").date()
+    end_date = datetime.strptime(end_date, "%Y%m%d").date()
+
     if __period__(period) == periods['tick']:
         return __get_tick_quotes_finam__(symbol, start_date, end_date, verbose)
-    elif __period__(period) >= periods['daily']:
-        return __get_daily_quotes_finam__(symbol, start_date, end_date, period, verbose)
     else:
-        start_date = datetime.strptime(start_date, "%Y%m%d").date()
-        end_date = datetime.strptime(end_date, "%Y%m%d").date()
         url = __get_url__(symbol, __period__(period), start_date, end_date, verbose)
-        try:
-            pdata = read_csv(url, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
-        except:
-            e = "ERROR on {}".format(url)
-            raise Exception(e)
-        
-        pdata.columns = [symbol + '.' + i for i in __col_names['bar']]
-        return pdata
+        buf = __get_buf_data(url)
+        return buf
 
 
-def __get_tick_quotes_finam__(symbol, start_date, end_date, verbose=False):
-    start_date = datetime.strptime(start_date, "%Y%m%d").date()
-    end_date = datetime.strptime(end_date, "%Y%m%d").date()
-    delta = end_date - start_date
-    data = DataFrame()
-    for i in range(delta.days + 1):
-        day = timedelta(i)
-        url = __get_url__(symbol, periods['tick'], start_date + day, start_date + day, verbose)
-        req = Request(url)
-        req.add_header('Referer', 'http://www.finam.ru/analysis/profile0000300007/default.asp')
-        r = urlopen2(req)
-        try:
-            tmp_data = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
-            if data.empty:
-                data = tmp_data
-            else:
-                data = data.append(tmp_data)
-        except Exception:
-            print('error on tick data downloading {} {}'.format(symbol, start_date + day))
-
-    data.columns = [symbol + '.' + i for i in __col_names['tick']]
-    return data
-
-
-def __get_tick_quotes_finam_all__(symbol, start_date, end_date, verbose=False):
-    start_date = datetime.strptime(start_date, "%Y%m%d").date()
-    end_date = datetime.strptime(end_date, "%Y%m%d").date()
-    url = __get_url__(symbol, periods['tick'], start_date, end_date, verbose)
-    req = Request(url)
-    req.add_header('Referer', 'http://www.finam.ru/analysis/profile0000300007/default.asp')
-    r = urlopen(req)
-    pdata = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
-    pdata.columns = [symbol + '.' + i for i in __col_names['tick']]
-    return pdata
-
-
+def get_quotes_finam(symbol, start_date='20070101', end_date=None,
+                     period='daily', verbose=False):
+    """
+    Return prices for symbol from start date to end date with default period daily.
+    Return type is pandas DataFrame.
+    Date format = YYYYMMDD
+    period can be in ['tick','1min','5min','10min','15min','30min','hour','daily','week','month']
+    """
+    buf = get_quotes_as_buf(symbol, start_date, end_date, period, verbose)
+    return __pandasDF_from_buf(buf)
 
 
 if __name__ == "__main__":
-    code = 'SBER'
+    code = 'AKRN'
     per = 'hour'
     print('download %s data for %s' % (per, code))
     s = """http://195.128.78.52/SBER_140101_150101.csv?market=1
@@ -216,6 +209,6 @@ if __name__ == "__main__":
 
     quote = get_quotes_finam(code, start_date='20150101', period=per, verbose=True)
     print(quote.head())
-    quote = get_quotes_finam(code, start_date='20150205', end_date='20150208', period='tick', verbose=True)
+    quote = get_quotes_finam(code, start_date='20150205', end_date='20150206', period='tick', verbose=True)
     print(quote.head())
     print(quote.tail())

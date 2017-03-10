@@ -1,1 +1,1 @@
-from .finamquote_dwl import get_quotes_finam, periods
+from .finamquote_dwl import periods, get_quotes_finam, get_quotes_as_buf
