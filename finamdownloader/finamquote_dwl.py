@@ -5,8 +5,14 @@ from urllib2 import urlopen as urlopen2
 from datetime import datetime, timedelta, date
 
 finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
+
 periods = {'tick': 1, '1min': 2, '5min': 3, '10min': 4, '15min': 5,
            '30min': 6, 'hour': 7, 'daily': 8, 'week': 9, 'month': 10}
+
+__col_names = {'tick': ['Last', 'Vol', 'Id'],
+               'bar' : ['Open', 'High', 'Low', 'Close', 'Vol'],
+              }
+
 
 __all__ = ['periods', 'get_quotes_finam']
 
@@ -38,13 +44,8 @@ def __get_finam_code__(symbol, verbose=False):
 
 
 def __get_url__(symbol, period, start_date, end_date, verbose=False):
-    # finam_HOST = "195.128.78.52"
     finam_HOST = "export.finam.ru"
-    #'http://195.128.78.52/table.csv?market=1&em=3&code=SBER&df=9&mf=11&yf=2013&dt=9&mt=11&yt=2013&p=1&f=table&e=.csv&cn=SBER&dtf=1&tmf=1&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&datf=9&at=1'
-    #'http://195.128.78.52/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1&em=20509&p=1&mf=10&cn=FEES&mt=10&df=22&dt=22&yt=2013&yf=2013&datf=11'
-    #finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=1&MSOR=0&sep=1&sep2=1&at=1&"
     finam_URL = "/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1&"
-    #'/table.csv?d=d&market=1&f=table&e=.csv&dtf=1&tmf=3&MSOR=0&mstime=on&mstimever=1&sep=3&sep2=1&at=1'
     symb = __get_finam_code__(symbol, verbose)
     params = urlencode({"p": period, "em": symb,
                         "df": start_date.day, "mf": start_date.month - 1,
@@ -64,6 +65,24 @@ def __period__(s):
     return periods[s]
 
 
+def __tryopenurl(url):
+    resp = urlopen(url)
+    rawstr = resp.read()
+    err_cnt = 0
+    while not __has_data(rawstr):
+        sleep(5)
+        err_cnt += 1
+        if err_cnt > 6:
+            raise Exception(unicode(rawstr, 'cp1251'))
+
+    return StringIO.StringIO(rawstr)
+
+
+def __has_data(rawstr):
+    err = u'Система уже обрабатывает Ваш запрос.'
+    return not unicode(rawstr, 'cp1251').startswith(err)
+
+
 def __get_daily_quotes_finam__(symbol, start_date='20070101',
                                end_date=date.today().strftime('%Y%m%d'),
                                period='daily', verbose=False):
@@ -76,9 +95,9 @@ def __get_daily_quotes_finam__(symbol, start_date='20070101',
     try:
         pdata = read_csv(url, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
     except:
-        e = "ERROR on {}".format(url)
-        raise Exception(e)
-    pdata.columns = [symbol + '.' + i for i in ['Open', 'High', 'Low', 'Close', 'Vol']]
+        raise Exception("ERROR on {}".format(url))
+    
+    pdata.columns = [symbol + '.' + i for i in __col_names['bar']]
     return pdata
 
 
@@ -107,7 +126,7 @@ def get_quotes_finam(symbol, start_date='20070101',
             e = "ERROR on {}".format(url)
             raise Exception(e)
         
-        pdata.columns = [symbol + '.' + i for i in ['Open', 'High', 'Low', 'Close', 'Vol']]
+        pdata.columns = [symbol + '.' + i for i in __col_names['bar']]
         return pdata
 
 
@@ -129,9 +148,9 @@ def __get_tick_quotes_finam__(symbol, start_date, end_date, verbose=False):
             else:
                 data = data.append(tmp_data)
         except Exception:
-            print('error on data downloading {} {}'.format(symbol, start_date + day))
+            print('error on tick data downloading {} {}'.format(symbol, start_date + day))
 
-    data.columns = [symbol + '.' + i for i in ['Last', 'Vol', 'Id']]
+    data.columns = [symbol + '.' + i for i in __col_names['tick']]
     return data
 
 
@@ -143,8 +162,10 @@ def __get_tick_quotes_finam_all__(symbol, start_date, end_date, verbose=False):
     req.add_header('Referer', 'http://www.finam.ru/analysis/profile0000300007/default.asp')
     r = urlopen(req)
     pdata = read_csv(r, index_col=0, parse_dates={'index': [0, 1]}, sep=';').sort_index()
-    pdata.columns = [symbol + '.' + i for i in ['Last', 'Vol', 'Id']]
+    pdata.columns = [symbol + '.' + i for i in __col_names['tick']]
     return pdata
+
+
 
 
 if __name__ == "__main__":
