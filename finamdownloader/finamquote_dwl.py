@@ -1,15 +1,35 @@
 # -*- coding: utf-8 -*-
 
+import sys
+
+pyver = sys.version_info[0]
+
 from pandas import DataFrame, read_csv
-from urllib import urlencode, urlopen
-from urllib2 import Request
-from urllib2 import urlopen as urlopen2
+
+if pyver > 2:
+    from urllib.parse import urlencode
+    from urllib.request import urlopen
+    from io import StringIO
+else: 
+    from urllib import urlencode
+    from urllib2 import Request
+    from urllib2 import urlopen
+    from StringIO import StringIO
+
 from datetime import datetime, timedelta, date
-import StringIO
 from time import sleep
 
 
 __finam_symbols = urlopen('http://www.finam.ru/cache/icharts/icharts.js').readlines()
+if pyver > 2:
+    for i in [0,2,3]:
+        __finam_symbols[i] = __finam_symbols[i].decode()
+
+def _unicode(sourse, decoding):
+    if pyver > 2:
+        return str(sourse)
+    return unicode(sourse, decoding)
+
 
 periods = {
     'tick': 1, '1min': 2, '5min': 3, '10min': 4, '15min': 5,
@@ -35,6 +55,11 @@ def __get_finam_code__(symbol, verbose=False):
     s_code = __finam_symbols[2]
     s_market = __finam_symbols[3]
 
+    # if pyver > 2:
+    #     ids = s_id[s_id.find(b'[') + 1:s_id.find(b']')].split(b',')
+    #     codes = s_code[s_code.find(b'[\'') + 1:s_code.find(b'\']')].split(b'\',\'')
+    #     markets = s_market[s_market.find(b'[') + 1:s_market.find(b']')].split(b',')
+    # else:
     ids = s_id[s_id.find('[') + 1:s_id.find(']')].split(',')
     codes = s_code[s_code.find('[\'') + 1:s_code.find('\']')].split('\',\'')
     markets = s_market[s_market.find('[') + 1:s_market.find(']')].split(',')
@@ -43,7 +68,7 @@ def __get_finam_code__(symbol, verbose=False):
         if c == symbol:
             res.append((i, c, m))
 
-    res = sorted(res, key=lambda (_i, _c, _m): int(_m))
+    res = sorted(res, key=lambda icm: int(icm[2]))
     if not res:
         raise Exception("%s not found." % symbol)
     __print__("{0}, {1}".format(res, symbol), verbose)
@@ -76,18 +101,22 @@ def __period__(s):
 def __get_buf_data(url):
     resp = urlopen(url)
     rawstr = resp.read()
+    if pyver > 2:
+        rawstr = rawstr.decode()
     erros_cnt = 0
     while not __has_data(rawstr):
         sleep(5)
         erros_cnt += 1
         if erros_cnt > 6:
-            raise Exception(unicode(rawstr, 'cp1251'))
-    return StringIO.StringIO(rawstr)
+            raise Exception(_unicode(rawstr, 'cp1251'))
+    return StringIO(rawstr)
 
 
 def __has_data(rawstr):
     error_data = u'Система уже обрабатывает Ваш запрос.'
-    if unicode(rawstr, 'cp1251').startswith(error_data):
+    rawstr = _unicode(rawstr, 'cp1251')
+
+    if rawstr.startswith(error_data):
         return False
     elif False:  # here must be other server exception
         return False
@@ -120,19 +149,22 @@ def __update_tick_id(buf):
 
 def __get_tick_quotes_finam__(symbol, start_date, end_date, verbose=False):
     delta = end_date - start_date
-    data = StringIO.StringIO()
+    data = StringIO()
+    is_data_writed = False
 
     for i in range(delta.days + 1):
         day = timedelta(i)
         url = __get_url__(symbol, periods['tick'], start_date + day, start_date + day, verbose)
         tmp_data = __get_buf_data(url)
-        if data.len > 0:  # skip head
+        # _len = len(data) if pyver > 2 else data.len
+        if is_data_writed:  # skip head
             _ = tmp_data.readline()
 
         data.write(__update_tick_id(tmp_data))
+        is_data_writed = True
         tmp_data.close()
 
-    return StringIO.StringIO(data.getvalue())
+    return StringIO(data.getvalue())
 
 
 def get_quotes_as_buf(symbol, start_date='20070101', end_date=None,

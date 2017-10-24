@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-VERSION = '0.1.5'
+VERSION = '0.1.6'
 
 import sys
 from setuptools import setup
 
 extra_args = {}
-if sys.version_info[0] >= 3:
-    raise Exceprion("This lib is only for python 2.7")
-	#extra_args['use_2to3'] = True
+# if sys.version_info[0] >= 3:
+#     raise Exceprion("This lib is only for python 2.7")
+# 	#extra_args['use_2to3'] = True
 
 
 setup(name='finamdownloader',
