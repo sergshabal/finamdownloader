@@ -126,8 +126,10 @@ def __has_data(rawstr):
 
 def __pandasDF_from_buf(buf):
     head = buf.readline()
-    col_names = map(str.capitalize, head.strip().replace('<', '').replace('>', '').split(';'))
-    df = read_csv(buf, index_col=0, parse_dates={'index': [0, 1]}, sep=';', names=col_names)
+    col_names = list(map(str.capitalize, head.strip().replace('<',
+        '').replace('>', '').split(';')))
+    df = read_csv(buf, index_col=0, parse_dates={'index': [0, 1]}, sep=';',
+            names=col_names, header=None)
     buf.close()
     return df
 
